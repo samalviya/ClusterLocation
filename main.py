@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt 
 import matplotlib.colors as colors
 import matplotlib.cm as cm
 
@@ -13,21 +13,22 @@ import random
 from sklearn.cluster import KMeans
 
 st.sidebar.title("Input Parameters")
-# st.set_option('deprecation.showPyplotGlobalUse', False)
 
 clusterNumber = st.sidebar.number_input('Number of clusters to be created', 1, 100, step=1)
-clusterNumber = st.sidebar.slider('Adjust no. of Cluster', 0,clusterNumber*2,clusterNumber)
+clusterNumber = st.sidebar.slider('Adjust no. of Cluster', 0, clusterNumber * 2, clusterNumber)
 uploaded_file = st.sidebar.file_uploader("Upload CSV file with GPS Coordinates")
 pointer = st.sidebar.checkbox('Show centre pin of each cluster')
 
 csv = pd.read_csv('Sample.csv')
 
-st.download_button( 
+st.download_button(
     label="Download Sample CSV",
     data=csv.to_csv(),
     file_name='Sample.csv',
     mime='text/csv',
 )
+
+download = pd.DataFrame()
 
 if clusterNumber < 2:
     st.error("Please enter the number of clusters")
@@ -38,33 +39,23 @@ elif uploaded_file is not None:
         df = df[['ID', 'Latitude', 'Longitude']]
     except:
         st.error("Sheet is in wrong format")
-    # # Figure best cluster
-    # K_clusters = range(1, 20)
-    # kmeans = [KMeans(n_clusters=i) for i in K_clusters]
-    # Y_axis = df[['Latitude']]
-    # X_axis = df[['Longitude']]
-    # score = [kmeans[i].fit(Y_axis).score(Y_axis) for i in range(len(kmeans))]
-    # plt.plot(K_clusters, score)
-    # plt.xlabel('Number of Clusters')
-    # plt.ylabel('Score')
-    # plt.title('Elbow Curve')
-    # st.pyplot()
 
     try:
         kmeans = KMeans(n_clusters=int(clusterNumber), init='k-means++')
         kmeans.fit(df[df.columns[1:3]])
         df['cluster_label'] = kmeans.fit_predict(df[df.columns[1:3]])
-        # df['cluster_label'] += 1
+        download = df.copy()
+        download['cluster_label'] = download['cluster_label'] + 1
         centers = kmeans.cluster_centers_
-        labels = kmeans.predict(df[df.columns[1:3]])
+        labels = kmeans.predict(download[download.columns[1:3]])
+        download['GPS'] = download['Latitude'].astype(str) + ',' + download['Longitude'].astype(str)
+        download = download[['ID', 'GPS', 'cluster_label']]
 
         st.success("Cluster map is created, you can download or see it")
 
-        # output = convert_df(df)
-
         st.download_button(
             label="Download Output",
-            data=df.to_csv().encode('utf-8'),
+            data=download.to_csv().encode('utf-8'),
             file_name='Clustered_GPS.csv',
             mime='text/csv',
         )
@@ -89,18 +80,19 @@ elif uploaded_file is not None:
         folium.TileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr='Esri').add_to(m)
         folium.TileLayer('cartodbpositron').add_to(m)
         
-        if pointer == True:
+        if pointer:
             colour = ['lightgreen', 'green', 'darkpurple', 'gray', 'lightred', 'darkred', 'black', 'purple', 'lightblue', 'blue', 'orange', 'cadetblue', 'red', 'lightgray', 'pink', 'darkgreen', 'darkblue', 'beige']
             for center, color in zip(centers, cluster_colors):
                 folium.Marker(location=[center[0], center[1]], icon=folium.Icon(color=random.choice(colour))).add_to(m)
-        else:
-            pass
-
+        
         folium.LayerControl().add_to(m)
         m.fit_bounds([[min_lat, min_lon], [max_lat, max_lon]])
 
         folium_static(m)
-    except:
-        st.warning("Something went wrong! Contact Support")
+    except Exception as e:
+        st.warning(f"Something went wrong! Contact Support. Error: {e}")
 else:
     st.warning("Please Upload CSV")
+
+if not download.empty:
+    st.write(download)
