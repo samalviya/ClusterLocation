@@ -10,7 +10,6 @@ import folium
 
 import random
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
-from scipy.cluster.hierarchy import dendrogram, linkage
 from sklearn.metrics.pairwise import haversine_distances
 from math import radians
 
@@ -37,7 +36,6 @@ with st.sidebar:
         clusterNumber = st.slider('Number of clusters', 1, 100, step=1)
 
     pointer = st.checkbox('Show cluster center markers', help="Display the centroid of each cluster on the map.")
-    show_dendrogram = st.checkbox('Show Dendrogram (Agglomerative Only)', value=False)
     st.markdown("---")
     st.markdown("### Download Options")
 
@@ -97,14 +95,6 @@ if uploaded_file is not None:
             model = AgglomerativeClustering(n_clusters=clusterNumber)
             df['cluster_label'] = model.fit_predict(df[['Latitude', 'Longitude']])
             centers = None
-
-            # Optionally show dendrogram
-            if show_dendrogram:
-                st.subheader("Dendrogram")
-                Z = linkage(df[['Latitude', 'Longitude']], 'ward')
-                plt.figure(figsize=(10, 7))
-                dendrogram(Z)
-                st.pyplot(plt)
 
         # Mark noise points in DBSCAN
         if clustering_method == "DBSCAN":
