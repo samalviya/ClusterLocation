@@ -80,7 +80,8 @@ if uploaded_file is not None:
                 st.stop()
             model = KMeans(n_clusters=clusterNumber, init='k-means++')
             df['cluster_label'] = model.fit_predict(df[['Latitude', 'Longitude']])
-            centers = model.cluster_centers_
+            centers = pd.DataFrame(model.cluster_centers_, columns=['Latitude', 'Longitude'])
+            centers['cluster_label'] = range(len(centers))
         elif clustering_method == "DBSCAN":
             if distance_metric == "Haversine (Kilometers)":
                 df = to_radians(df)
