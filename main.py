@@ -11,13 +11,15 @@ import folium
 import random
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 from scipy.cluster.hierarchy import dendrogram, linkage
+from sklearn.metrics.pairwise import haversine_distances
+from math import radians
 
 # Set up Streamlit app
-st.title("GPS Clustering Tool")
+st.title("Enhanced GPS Clustering Tool")
 st.subheader("Upload your GPS data and visualize clusters on the map")
 st.markdown("### Instructions:")
 st.markdown("1. Upload a CSV file containing GPS coordinates in a column named 'GPS' (formatted as 'latitude,longitude').")
-st.markdown("2. Choose the number of clusters or adjust other parameters for DBSCAN.")
+st.markdown("2. Choose clustering algorithm and parameters.")
 st.markdown("3. Optionally, display the center of each cluster on the map.")
 
 # Sidebar settings
@@ -28,7 +30,8 @@ with st.sidebar:
 
     # Additional parameters for DBSCAN
     if clustering_method == "DBSCAN":
-        epsilon = st.number_input("Epsilon (max distance between points)", min_value=0.001, max_value=1.0, step=0.001, value=0.1)
+        distance_metric = st.selectbox("Distance Metric for DBSCAN", ["Euclidean", "Haversine (Kilometers)"])
+        epsilon = st.number_input("Epsilon (max distance)", min_value=0.1, max_value=100.0, step=0.1, value=0.5)
         min_samples = st.slider("Minimum Samples per Cluster", 1, 20, 5)
     else:
         clusterNumber = st.slider('Number of clusters', 1, 100, step=1)
@@ -49,6 +52,12 @@ with st.sidebar:
 
 # Initialize download DataFrame
 download = pd.DataFrame()
+
+# Function to convert latitude and longitude to radians
+def to_radians(df):
+    df['Latitude_rad'] = df['Latitude'].apply(radians)
+    df['Longitude_rad'] = df['Longitude'].apply(radians)
+    return df
 
 # Main logic
 if uploaded_file is not None:
@@ -72,8 +81,14 @@ if uploaded_file is not None:
             df['cluster_label'] = model.fit_predict(df[['Latitude', 'Longitude']])
             centers = model.cluster_centers_
         elif clustering_method == "DBSCAN":
-            model = DBSCAN(eps=epsilon, min_samples=min_samples)
-            df['cluster_label'] = model.fit_predict(df[['Latitude', 'Longitude']])
+            if distance_metric == "Haversine (Kilometers)":
+                df = to_radians(df)
+                dist_matrix = haversine_distances(df[['Latitude_rad', 'Longitude_rad']]) * 6371  # Convert to kilometers
+                model = DBSCAN(eps=epsilon, min_samples=min_samples, metric='precomputed')
+                df['cluster_label'] = model.fit_predict(dist_matrix)
+            else:
+                model = DBSCAN(eps=epsilon, min_samples=min_samples)
+                df['cluster_label'] = model.fit_predict(df[['Latitude', 'Longitude']])
             centers = None
         else:  # Agglomerative Clustering
             model = AgglomerativeClustering(n_clusters=clusterNumber)
