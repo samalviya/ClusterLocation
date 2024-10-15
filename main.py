@@ -71,6 +71,9 @@ if uploaded_file is not None:
         # Split GPS column into Latitude and Longitude
         df[['Latitude', 'Longitude']] = df['GPS'].str.split(',', expand=True).astype(float)
         df = df[['ID', 'Latitude', 'Longitude']]
+        
+        # Dummy village names (in real case, this data should come from the input file or another source)
+        village_names = [f"Village {i}" for i in range(len(df))]
 
         # Choose clustering algorithm
         if clustering_method == "K-Means":
@@ -138,7 +141,12 @@ if uploaded_file is not None:
         # Plot clusters
         for idx, row in df.iterrows():
             cluster_color = 'gray' if row['cluster_label'] == 'Noise' else cluster_colors[int(row['cluster_label']) % len(cluster_colors)]
-            folium.CircleMarker(location=[row['Latitude'], row['Longitude']], radius=2, color=cluster_color).add_to(m)
+            folium.CircleMarker(
+                location=[row['Latitude'], row['Longitude']], 
+                radius=2, 
+                color=cluster_color,
+                tooltip=f"ID: {row['ID']}"
+            ).add_to(m)
 
         # Add tile layers
         folium.TileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr='Esri').add_to(m)
@@ -146,9 +154,13 @@ if uploaded_file is not None:
 
         # Optionally add center markers
         if pointer and centers is not None:
-            colour = ['lightgreen', 'green', 'darkpurple', 'gray', 'lightred', 'darkred', 'black', 'purple', 'lightblue', 'blue', 'orange', 'cadetblue', 'red', 'lightgray', 'pink', 'darkgreen', 'darkblue', 'beige']
-            for center in centers:
-                folium.Marker(location=[center[0], center[1]], icon=folium.Icon(color=random.choice(colour))).add_to(m)
+            for i, center in enumerate(centers):
+                popup = folium.Popup(f"Village: {village_names[i]}", parse_html=True)
+                folium.Marker(
+                    location=[center[0], center[1]],
+                    popup=popup,
+                    icon=folium.Icon(color=random.choice(['green', 'blue', 'orange', 'purple']))
+                ).add_to(m)
 
         # Add layer control
         folium.LayerControl().add_to(m)
