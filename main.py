@@ -90,11 +90,11 @@ if uploaded_file is not None:
             else:
                 model = DBSCAN(eps=epsilon, min_samples=min_samples)
                 df['cluster_label'] = model.fit_predict(df[['Latitude', 'Longitude']])
-            centers = None
+            centers = df.groupby('cluster_label')[['Latitude', 'Longitude']].mean().reset_index() if len(df['cluster_label'].unique()) > 1 else None
         else:  # Agglomerative Clustering
             model = AgglomerativeClustering(n_clusters=clusterNumber)
             df['cluster_label'] = model.fit_predict(df[['Latitude', 'Longitude']])
-            centers = None
+            centers = df.groupby('cluster_label')[['Latitude', 'Longitude']].mean().reset_index()
 
         # Mark noise points in DBSCAN
         if clustering_method == "DBSCAN":
@@ -133,7 +133,7 @@ if uploaded_file is not None:
             cluster_color = 'gray' if row['cluster_label'] == 'Noise' else cluster_colors[int(row['cluster_label']) % len(cluster_colors)]
             folium.CircleMarker(
                 location=[row['Latitude'], row['Longitude']], 
-                radius=2, 
+                radius=5, 
                 color=cluster_color,
                 tooltip=f"ID: {row['ID']}"
             ).add_to(m)
@@ -142,13 +142,14 @@ if uploaded_file is not None:
         folium.TileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attr='Esri').add_to(m)
         folium.TileLayer('cartodbpositron').add_to(m)
 
-        # Optionally add center markers
+        # Optionally add center markers for all algorithms
         if pointer and centers is not None:
-            for i, center in enumerate(centers):
-                popup = folium.Popup(f"Village: {village_names[i]}", parse_html=True)
+            for _, center in centers.iterrows():
+                village_idx = center['cluster_label'] if isinstance(center['cluster_label'], int) else -1
+                village_name = village_names[village_idx] if village_idx != -1 else "Noise"
                 folium.Marker(
-                    location=[center[0], center[1]],
-                    popup=popup,
+                    location=[center['Latitude'], center['Longitude']],
+                    popup=f"Center: {village_name}",
                     icon=folium.Icon(color=random.choice(['green', 'blue', 'orange', 'purple']))
                 ).add_to(m)
 
