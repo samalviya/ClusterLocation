@@ -136,7 +136,7 @@ if uploaded_file is not None:
                 location=[row['Latitude'], row['Longitude']], 
                 radius=5, 
                 color=cluster_color,
-                tooltip=f"ID: {row['ID']}"
+                tooltip=f"ID: {row['cluster_label']}"
             ).add_to(m)
 
         # Add tile layers
